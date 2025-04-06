@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgChartsModule } from 'ng2-charts';
-import { ChartConfiguration, ChartType, ChartDataset } from 'chart.js';
+import { ChartConfiguration } from 'chart.js';
 
 @Component({
   selector: 'app-emergency-flow-chart',
@@ -11,27 +11,7 @@ import { ChartConfiguration, ChartType, ChartDataset } from 'chart.js';
   styleUrls: ['./emergency-flow-chart.component.scss']
 })
 export class EmergencyFlowChartComponent {
-  public barChartOptions: ChartConfiguration<'bar'>['options'] = {
-    responsive: true,
-    animation: {
-      duration: 1000,
-      easing: 'easeOutQuart'
-    },
-    plugins: {
-      legend: {
-        display: false
-      }
-    },
-    scales: {
-      x: {},
-      y: {
-        beginAtZero: true,
-        max: 100
-      }
-    }
-  };
-
-  public barChartType: ChartType = 'bar';
+  public barChartType: 'bar' = 'bar'; // ✅ FIX ici
 
   public barChartData: ChartConfiguration<'bar'>['data'] = {
     labels: ['12h', '14h', '16h', '18h', '20h', '22h'],
@@ -45,5 +25,25 @@ export class EmergencyFlowChartComponent {
         barPercentage: 0.6
       }
     ]
+  };
+
+  public barChartOptions: ChartConfiguration<'bar'>['options'] = {
+    responsive: true,
+    animation: {
+      duration: 1000,
+      easing: 'easeOutQuart'
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: true }
+    },
+    scales: {
+      x: { ticks: { color: '#6B7280' } },
+      y: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { color: '#6B7280' }
+      }
+    }
   };
 }

@@ -35,13 +35,12 @@
           ></button>
 
           <p-dropdown
-          [options]="emergencyLevels"
-          [(ngModel)]="selectedUrgenceLevel"
-          placeholder="Sélectionner un niveau"
-          (onChange)="onUrgenceChange($event, dt1)"
-          appendTo="body"
-        ></p-dropdown>
-        
+            [options]="emergencyLevels"
+            [(ngModel)]="selectedUrgenceLevel"
+            placeholder="Sélectionner un niveau"
+            (onChange)="onUrgenceChange($event, dt1)"
+            appendTo="body"
+          ></p-dropdown>
         </div>
 
         <p-iconfield iconPosition="left">
@@ -66,6 +65,7 @@
         <th>Niveau d'urgence</th>
         <th>Date d'entrée</th>
         <th>Temps d'attente</th>
+        <th>Temps prédit</th>
         <th>Date de sortie</th>
         <th pSortableColumn="etat">État <p-sortIcon field="etat"></p-sortIcon></th>
         <th>Actions</th>
@@ -92,6 +92,9 @@
           <span *ngIf="patient.etat === 'left' && patient.date_sortie">
             {{ calculateWaitingTime(patient.date_entree, patient.date_sortie) }}
           </span>
+        </td>
+        <td>
+          {{ patient.predicted_wait_time !== undefined ? (patient.predicted_wait_time | number : '1.0-0') + ' min' : '—' }}
         </td>
         <td>
           <span *ngIf="patient.etat === 'left' && patient.date_sortie">
@@ -149,13 +152,13 @@
 
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="9">Aucun patient trouvé.</td>
+        <td colspan="10">Aucun patient trouvé.</td>
       </tr>
     </ng-template>
 
     <ng-template pTemplate="loadingbody">
       <tr>
-        <td colspan="9">Chargement des données...</td>
+        <td colspan="10">Chargement des données...</td>
       </tr>
     </ng-template>
   </p-table>
@@ -189,6 +192,31 @@
           [filter]="true"
         ></p-dropdown>
       </div>
+
+      <div>
+        <label class="font-bold mb-2 block">Ratio infirmier/patient</label>
+        <input type="number" pInputText [(ngModel)]="newPatient.nurse_to_patient_ratio" min="1" max="10" />
+      </div>
+
+      <div>
+        <label class="font-bold mb-2 block">Disponibilité spécialiste</label>
+        <input type="number" pInputText [(ngModel)]="newPatient.specialist_availability" min="0" max="10" />
+      </div>
+
+      <div>
+        <label class="font-bold mb-2 block">Temps jusqu'à enregistrement (min)</label>
+        <input type="number" pInputText [(ngModel)]="newPatient.time_to_registration_min" min="0" />
+      </div>
+
+      <div>
+        <label class="font-bold mb-2 block">Temps jusqu'au professionnel médical (min)</label>
+        <input type="number" pInputText [(ngModel)]="newPatient.time_to_medical_professional_min" min="0" />
+      </div>
+
+      <div>
+        <label class="font-bold mb-2 block">Lits disponibles (%)</label>
+        <input type="number" pInputText [(ngModel)]="newPatient.available_beds_percent" min="0" max="100" />
+      </div>
     </div>
 
     <ng-template pTemplate="footer">
@@ -196,8 +224,9 @@
       <p-button label="Ajouter" icon="pi pi-check" (click)="savePatient()"></p-button>
     </ng-template>
   </p-dialog>
-   <!-- Modal édition -->
-   <p-dialog [(visible)]="editDialogVisible" [style]="{ width: '500px' }" header="Modifier le patient" [modal]="true">
+
+  <!-- Modal édition -->
+  <p-dialog [(visible)]="editDialogVisible" [style]="{ width: '500px' }" header="Modifier le patient" [modal]="true">
     <div class="flex flex-col gap-4">
       <div>
         <label for="edit-nom" class="font-bold mb-2 block">Nom</label>

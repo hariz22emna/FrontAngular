@@ -21,10 +21,7 @@ import { TagModule } from 'primeng/tag';
 import { DropdownModule } from 'primeng/dropdown';
 import { DialogModule } from 'primeng/dialog';
 import { CalendarModule } from 'primeng/calendar';
-
-interface expandedRows {
-  [key: string]: boolean;
-}
+import { PredictionService } from '../service/prediction.service';
 
 @Component({
   selector: 'app-patients',
@@ -54,7 +51,7 @@ interface expandedRows {
   styleUrls: ['./patients.component.scss']
 })
 export class PatientsComponent implements OnInit {
-  patients: Patient[] = [];
+  patients: (Patient & { predicted_wait_time?: number })[] = [];
   loading: boolean = true;
   etatOptions = [
     { label: 'En attente', value: 'waiting' },
@@ -63,10 +60,11 @@ export class PatientsComponent implements OnInit {
   ];
   selectedEtat: string = '';
 
-  // Ajout patient
   patientDialog: boolean = false;
   submitted: boolean = false;
   newPatient: Partial<Patient> = {};
+  selectedPatient: Patient = {} as Patient;
+  editDialogVisible: boolean = false;
 
   emergencyLevels = [
     { label: '1 - Faible', value: '1' },
@@ -75,14 +73,14 @@ export class PatientsComponent implements OnInit {
     { label: '4 - Élevée', value: '4' },
     { label: '5 - Critique', value: '5' }
   ];
+  selectedUrgenceLevel: string = '';
 
   @ViewChild('filter') filter!: ElementRef;
 
-  constructor(private patientService: PatientService) {}
+  constructor(private patientService: PatientService, private predictionService: PredictionService) {}
 
   ngOnInit(): void {
     this.loadPatients();
-
     setInterval(() => {
       this.patients = [...this.patients];
     }, 60000);
@@ -91,6 +89,19 @@ export class PatientsComponent implements OnInit {
   loadPatients(): void {
     this.patients = this.patientService.getPatients();
     this.loading = false;
+    this.patients.forEach(patient => {
+      const features = [
+        parseFloat(patient.emergency_level),
+        4,
+        5,
+        10,
+        20,
+        50
+      ];
+      this.predictionService.predict(features).subscribe(res => {
+        patient.predicted_wait_time = res.prediction;
+      });
+    });
   }
 
   openNewPatientDialog() {
@@ -101,16 +112,47 @@ export class PatientsComponent implements OnInit {
 
   savePatient() {
     this.submitted = true;
-    if (this.newPatient.nom && this.newPatient.date_naissance && this.newPatient.maladie && this.newPatient.emergency_level) {
-      this.patientService.addPatient({
-        ...this.newPatient,
-        date_entree: new Date(),
-        etat: 'waiting'
-      } as Patient);
-      this.patientDialog = false;
-      this.loadPatients();
+  
+    if (
+      this.newPatient.nom &&
+      this.newPatient.date_naissance &&
+      this.newPatient.maladie &&
+      this.newPatient.emergency_level &&
+      this.newPatient.nurse_to_patient_ratio !== undefined &&
+      this.newPatient.specialist_availability !== undefined &&
+      this.newPatient.time_to_registration_min !== undefined &&
+      this.newPatient.time_to_medical_professional_min !== undefined &&
+      this.newPatient.available_beds_percent !== undefined
+    ) {
+      // Construction des features pour la prédiction
+      const features = [
+        parseFloat(this.newPatient.emergency_level),
+        this.newPatient.nurse_to_patient_ratio,
+        this.newPatient.specialist_availability,
+        this.newPatient.time_to_registration_min,
+        this.newPatient.time_to_medical_professional_min,
+        this.newPatient.available_beds_percent
+      ];
+  
+      // Appel à l’API pour la prédiction
+      this.predictionService.predict(features).subscribe((res) => {
+        const predicted = res.prediction;
+  
+        const newPatient: Patient = {
+          ...this.newPatient,
+          id: 0, // sera généré dans le service
+          date_entree: new Date(),
+          etat: 'waiting',
+          predicted_wait_time: predicted
+        } as Patient;
+  
+        this.patientService.addPatient(newPatient);
+        this.patientDialog = false;
+        this.loadPatients();
+      });
     }
   }
+  
 
   deletePatient(id: number): void {
     this.patientService.deletePatient(id);
@@ -130,32 +172,27 @@ export class PatientsComponent implements OnInit {
     table.filter(event.value, 'etat', 'equals');
   }
 
+  onUrgenceChange(event: any, table: Table) {
+    table.filter(event.value, 'emergency_level', 'equals');
+  }
+
   getSeverity(level: string) {
     switch (level) {
-      case '1':
-        return 'secondary';   // 🔳 Niveau 1 – Gris foncé
-      case '2':
-        return 'info';       // 🟦 Niveau 2 – Bleu
-      case '3':
-        return 'success';    // 🟩 Niveau 3 – Vert
-      case '4':
-        return 'warn';       // 🟨 Niveau 4 – Orange
-      case '5':
-        return 'danger';     // 🟥 Niveau 5 – Rouge
-      default:
-        return 'contrast';  // ⚪ Si aucune correspondance
+      case '1': return 'secondary';
+      case '2': return 'info';
+      case '3': return 'success';
+      case '4': return 'warn';
+      case '5': return 'danger';
+      default: return 'contrast';
     }
   }
-  
 
   calculateAge(dateNaissance: Date): number {
     const today = new Date();
     const birthDate = new Date(dateNaissance);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
     return age;
   }
 
@@ -163,11 +200,9 @@ export class PatientsComponent implements OnInit {
     const end = dateFin ? new Date(dateFin) : new Date();
     const entree = new Date(dateEntree);
     const diffMs = end.getTime() - entree.getTime();
-
     const minutes = Math.floor(diffMs / 60000);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-
     if (days > 0) return `${days}j ${hours % 24}h`;
     else if (hours > 0) return `${hours}h ${minutes % 60}m`;
     else return `${minutes} min`;
@@ -175,59 +210,39 @@ export class PatientsComponent implements OnInit {
 
   changerEtat(patient: Patient, nouvelEtat: 'waiting' | 'in-progress' | 'left') {
     patient.etat = nouvelEtat;
-
     if (nouvelEtat === 'left') {
       patient.date_sortie = new Date();
     }
-
     this.patientService.updatePatient(patient);
   }
 
   getEtatLabel(etat: string): string {
     switch (etat) {
-      case 'waiting':
-        return 'En attente';
-      case 'in-progress':
-        return 'Pris en charge';
-      case 'left':
-        return 'Sorti';
-      default:
-        return '';
+      case 'waiting': return 'En attente';
+      case 'in-progress': return 'Pris en charge';
+      case 'left': return 'Sorti';
+      default: return '';
     }
   }
 
   getEtatSeverity(etat: 'waiting' | 'in-progress' | 'left'): 'success' | 'info' | 'warn' | 'danger' | 'contrast' | 'secondary' {
     switch (etat) {
-      case 'waiting':
-        return 'warn';
-      case 'in-progress':
-        return 'success';
-      case 'left':
-        return 'danger';
-      default:
-        return 'secondary';
+      case 'waiting': return 'warn';
+      case 'in-progress': return 'success';
+      case 'left': return 'danger';
+      default: return 'secondary';
     }
   }
-  selectedPatient: Patient = {} as Patient;
-editDialogVisible: boolean = false;
 
-editPatient(patient: Patient) {
-  this.selectedPatient = { ...patient };
-  this.editDialogVisible = true;
-}
+  editPatient(patient: Patient) {
+    this.selectedPatient = { ...patient };
+    this.editDialogVisible = true;
+  }
 
-updatePatient() {
-  if (!this.selectedPatient.nom) return;
-
-  this.patientService.updatePatient(this.selectedPatient);
-  this.loadPatients();
-  this.editDialogVisible = false;
-}
-selectedUrgenceLevel: string = '';
-
-onUrgenceChange(event: any, table: Table) {
-  table.filter(event.value, 'emergency_level', 'equals');
-}
-
-
+  updatePatient() {
+    if (!this.selectedPatient.nom) return;
+    this.patientService.updatePatient(this.selectedPatient);
+    this.loadPatients();
+    this.editDialogVisible = false;
+  }
 }
