@@ -14,11 +14,11 @@ import { LayoutService } from '../service/layout.service';
     template: `<div class="layout-wrapper" [ngClass]="containerClass">
         <app-topbar></app-topbar>
         <app-sidebar></app-sidebar>
-        <div class="layout-main-container">
-            <div class="layout-main">
+        <div class="layout-main-container" style="display: flex; flex-direction: row;">
+            <div class="layout-main" style="flex: 1;">
                 <router-outlet></router-outlet>
+                <app-footer></app-footer>
             </div>
-            <app-footer></app-footer>
         </div>
         <div class="layout-mask animate-fadein"></div>
     </div> `
