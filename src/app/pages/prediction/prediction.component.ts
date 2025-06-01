@@ -5,9 +5,13 @@ import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
+import { DropdownModule } from 'primeng/dropdown';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
+
 import { PredictionService } from '../service/prediction.service';
 import { Prediction } from '../../models/prediction';
-import { DropdownModule } from 'primeng/dropdown';
 
 @Component({
   selector: 'app-prediction',
@@ -19,8 +23,11 @@ import { DropdownModule } from 'primeng/dropdown';
     ButtonModule,
     FormsModule,
     DropdownModule,
-    InputTextModule
+    InputTextModule,
+    ConfirmDialogModule,
+    ToastModule
   ],
+  providers: [ConfirmationService, MessageService],
   templateUrl: './prediction.component.html',
   styleUrls: ['./prediction.component.scss']
 })
@@ -42,7 +49,6 @@ export class PredictionComponent implements OnInit {
   seasons = ['Spring', 'Summer', 'Fall', 'Winter'];
   regions = ['Urban', 'Rural'];
 
-  // ✅ Définition des champs pour la modal d'ajout
   fields = [
     { model: 'real_wait_time', label: 'Temps d\'attente réel (min)', required: true },
     { model: 'predicted_wait_time', label: 'Temps d\'attente prédit (min)', required: true },
@@ -56,7 +62,11 @@ export class PredictionComponent implements OnInit {
     { model: 'queue_size', label: 'Taille de la file d\'attente', required: false }
   ];
 
-  constructor(private predictionService: PredictionService) {}
+  constructor(
+    private predictionService: PredictionService,
+    private confirmationService: ConfirmationService,
+    private messageService: MessageService
+  ) {}
 
   async ngOnInit() {
     await this.loadPredictions();
@@ -67,14 +77,12 @@ export class PredictionComponent implements OnInit {
     try {
       this.predictions = await this.predictionService.getPredictions();
     } catch (error) {
-      console.error('Erreur lors du chargement:', error);
-      alert('Erreur lors du chargement des prédictions');
+      this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Échec du chargement des prédictions.' });
     }
     this.loading = false;
   }
 
   openNewPredictionDialog() {
-    // ✅ Réinitialiser complètement le formulaire
     this.newPrediction = {
       real_wait_time: undefined,
       predicted_wait_time: undefined,
@@ -94,103 +102,79 @@ export class PredictionComponent implements OnInit {
   }
 
   async savePrediction() {
+    if (!this.isFormValid()) {
+      this.messageService.add({ severity: 'warn', summary: 'Champs manquants', detail: 'Veuillez remplir tous les champs requis.' });
+      return;
+    }
+
+    const dayBooleans: any = {};
+    this.days.forEach(day => {
+      const key = `day_of_week_${day.toLowerCase()}`;
+      dayBooleans[key] = this.selectedDay === day;
+    });
+
+    const seasonBooleans: any = {};
+    this.seasons.forEach(season => {
+      const key = `season_${season.toLowerCase()}`;
+      seasonBooleans[key] = this.selectedSeason === season;
+    });
+
+    const fullPrediction: Partial<Prediction> = {
+      ...this.convertAllFieldsToNumbers(this.newPrediction),
+      region_urban: this.selectedRegion === 'Urban',
+      region_rural: this.selectedRegion === 'Rural',
+      is_weekend: ['Saturday', 'Sunday'].includes(this.selectedDay),
+      ...dayBooleans,
+      ...seasonBooleans
+    };
+
     try {
-      if (!this.isFormValid()) {
-        alert('Veuillez remplir tous les champs requis');
-        return;
-      }
-
-      // ✅ Jour : snake_case pour Supabase
-      const dayBooleans: any = {};
-      this.days.forEach(day => {
-        const key = `day_of_week_${day.toLowerCase()}`;
-        dayBooleans[key] = this.selectedDay === day;
-      });
-
-      // ✅ Saison : snake_case
-      const seasonBooleans: any = {};
-      this.seasons.forEach(season => {
-        const key = `season_${season.toLowerCase()}`;
-        seasonBooleans[key] = this.selectedSeason === season;
-      });
-
-      const fullPrediction: Partial<Prediction> = {
-        real_wait_time: this.convertToNumber(this.newPrediction.real_wait_time),
-        predicted_wait_time: this.convertToNumber(this.newPrediction.predicted_wait_time),
-        time_to_registration: this.convertToNumber(this.newPrediction.time_to_registration),
-        time_to_triage: this.convertToNumber(this.newPrediction.time_to_triage),
-        available_beds_percent: this.convertToNumber(this.newPrediction.available_beds_percent),
-        time_of_day: this.convertToNumber(this.newPrediction.time_of_day),
-        urgency_level: this.convertToNumber(this.newPrediction.urgency_level),
-        nurse_to_patient_ratio: this.convertToNumber(this.newPrediction.nurse_to_patient_ratio),
-        specialist_availability: this.convertToNumber(this.newPrediction.specialist_availability),
-        queue_size: this.convertToNumber(this.newPrediction.queue_size),
-        region_urban: this.selectedRegion === 'Urban',
-        region_rural: this.selectedRegion === 'Rural',
-        is_weekend: ['Saturday', 'Sunday'].includes(this.selectedDay),
-        ...dayBooleans,
-        ...seasonBooleans
-      };
-
-      console.log('✅ Envoi à Supabase :', fullPrediction);
-
       await this.predictionService.addPrediction(fullPrediction);
       this.predictionDialogVisible = false;
       await this.loadPredictions();
-      alert('✅ Prédiction ajoutée avec succès !');
+      this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Prédiction ajoutée avec succès.' });
     } catch (error) {
-      console.error('❌ Erreur lors de l\'ajout :', error);
-      alert('Erreur lors de l\'ajout de la prédiction');
+      this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Ajout échoué.' });
     }
   }
 
-  // ✅ Fonction de validation améliorée
+private convertAllFieldsToNumbers(data: Partial<Prediction>): Partial<Prediction> {
+  const result: Partial<Prediction> = {};
+
+  (Object.keys(data) as (keyof Prediction)[]).forEach((key) => {
+    const rawValue = data[key];
+    const converted = this.convertToNumber(rawValue);
+
+    // On n'assigne la valeur que si elle n'est pas undefined
+    if (converted !== undefined) {
+      (result as Record<string, number>)[key] = converted;
+    }
+  });
+
+  return result;
+}
+
+
   private isFormValid(): boolean {
     const requiredFields = this.fields.filter(field => field.required);
     const fieldsValid = requiredFields.every(field => {
       const value = this.newPrediction[field.model as keyof Prediction];
       return this.isValidValue(value);
     });
-
     return fieldsValid && !!this.selectedDay && !!this.selectedSeason && !!this.selectedRegion;
   }
 
-  // ✅ Fonction utilitaire pour valider les valeurs
   private isValidValue(value: any): boolean {
-    if (value === undefined || value === null) {
-      return false;
-    }
-    
-    // Pour les chaînes vides
-    if (typeof value === 'string' && value.trim() === '') {
-      return false;
-    }
-    
-    // Pour les nombres (accepter 0 comme valide)
-    if (typeof value === 'number' && isNaN(value)) {
-      return false;
-    }
-    
+    if (value === undefined || value === null) return false;
+    if (typeof value === 'string' && value.trim() === '') return false;
+    if (typeof value === 'number' && isNaN(value)) return false;
     return true;
   }
 
-  // ✅ Utilitaire pour convertir en nombre (amélioré)
   private convertToNumber(value: any): number | undefined {
-    if (value === undefined || value === null) {
-      return undefined;
-    }
-    
-    // Si c'est déjà un nombre
-    if (typeof value === 'number') {
-      return isNaN(value) ? undefined : value;
-    }
-    
-    // Si c'est une chaîne vide ou juste des espaces
-    if (typeof value === 'string' && value.trim() === '') {
-      return undefined;
-    }
-    
-    // Tentative de conversion
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'number') return isNaN(value) ? undefined : value;
+    if (typeof value === 'string' && value.trim() === '') return undefined;
     const num = Number(value);
     return isNaN(num) ? undefined : num;
   }
@@ -213,54 +197,57 @@ export class PredictionComponent implements OnInit {
         const index = this.predictions.findIndex(p => p.id === id);
         if (index !== -1) this.predictions[index] = { ...this.selectedPrediction };
         this.editDialogVisible = false;
-        alert('Prédiction mise à jour avec succès !');
+        this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Prédiction mise à jour.' });
       } else {
-        alert('Erreur lors de la mise à jour');
+        this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour.' });
       }
     } catch (error) {
-      console.error('Erreur lors de la mise à jour:', error);
-      alert('Erreur lors de la mise à jour');
+      this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Exception lors de la mise à jour.' });
     }
   }
 
-  // ✅ Méthodes pour la modal d'ajout
+  confirmDeletePrediction(id: number) {
+    this.confirmationService.confirm({
+      message: 'Voulez-vous vraiment supprimer cette prédiction ?',
+      header: 'Confirmation',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Oui',
+      rejectLabel: 'Non',
+      accept: () => this.deletePrediction(id)
+    });
+  }
+
+  async deletePrediction(id: number) {
+    try {
+      const { error } = await this.predictionService.deletePrediction(id);
+      if (!error) {
+        this.predictions = this.predictions.filter(p => p.id !== id);
+        this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Prédiction supprimée.' });
+      } else {
+        this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression échouée.' });
+      }
+    } catch (error) {
+      this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Exception lors de la suppression.' });
+    }
+  }
+
   getFieldValue(field: string) {
     return this.newPrediction[field as keyof Prediction];
   }
 
   setFieldValue(field: string, value: any) {
-    // ✅ Assignation sécurisée avec vérification de type
     if (field in this.newPrediction) {
       (this.newPrediction as Record<string, any>)[field] = value;
     }
   }
 
-  // ✅ Méthodes pour la modal d'édition
   getEditFieldValue(field: string) {
     return this.selectedPrediction[field as keyof Prediction];
   }
 
   setEditFieldValue(field: string, value: any) {
-    // ✅ Assignation sécurisée avec vérification de type
     if (field in this.selectedPrediction) {
       (this.selectedPrediction as Record<string, any>)[field] = value;
-    }
-  }
-
-  async deletePrediction(id: number) {
-    if (confirm(`Supprimer la prédiction #${id} ?`)) {
-      try {
-        const { error } = await this.predictionService.deletePrediction(id);
-        if (!error) {
-          this.predictions = this.predictions.filter(p => p.id !== id);
-          alert('Prédiction supprimée avec succès !');
-        } else {
-          alert('Erreur lors de la suppression');
-        }
-      } catch (error) {
-        console.error('Erreur lors de la suppression:', error);
-        alert('Erreur lors de la suppression');
-      }
     }
   }
 }
