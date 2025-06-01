@@ -1,0 +1,12 @@
+{
+  "/predict_surcharge_from_supabase": {
+    "target": "http://localhost:8000",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/surcharge_chart_data": {
+    "target": "http://localhost:8000",
+    "secure": false,
+    "changeOrigin": true
+  }
+}
