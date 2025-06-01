@@ -1,79 +1,85 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { PredictionService } from '../../service/prediction.service';
+import { DoctorSupabaseService } from '../../../supabase/services/doctor-supabase.service';
+import { NurseSupabaseService } from '../../../supabase/services/nurse-supabase.service';
+import { RoomSupabaseService } from '../../../supabase/services/room-supabase.service';
+
 
 @Component({
-  standalone: true,
   selector: 'app-stats-widget',
-  imports: [CommonModule],
+  standalone: true,
   template: `
-    <div class="grid grid-cols-12 gap-4">
-      
-      <!-- Available Beds -->
-      <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card h-full flex flex-col justify-between p-4">
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="block text-muted text-sm mb-1 uppercase font-semibold tracking-wide">Available Beds</span>
-              <div class="text-4xl font-bold text-surface-900 dark:text-white">1324</div>
-            </div>
-            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 3rem; height: 3rem">
-              <i class="fas fa-procedures text-blue-500 text-3xl"></i>
-
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Available Ambulances -->
-      <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card h-full flex flex-col justify-between p-4">
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="block text-muted text-sm mb-1 uppercase font-semibold tracking-wide">Available Ambulances</span>
-              <div class="text-4xl font-bold text-surface-900 dark:text-white">47</div>
-            </div>
-            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 3rem; height: 3rem">
-              <i class="pi pi-truck text-blue-500 text-5xl"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <!-- Total Patients -->
-      <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card h-full flex flex-col justify-between p-4">
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="block text-muted text-sm mb-1 uppercase font-semibold tracking-wide">Total Patients</span>
-              <div class="text-4xl font-bold text-surface-900 dark:text-white">844</div>
-            </div>
-            <div class="flex items-center justify-center bg-cyan-100 dark:bg-cyan-400/10 rounded-border" style="width: 3rem; height: 3rem">
-              <i class="pi pi-users text-cyan-500 text-2xl"></i>
-            </div>
-          </div>
-          <div class="mt-2">
-            <span class="text-blue-500 font-semibold text-sm">20</span>
-            <span class="text-muted text-sm"> newly registered</span>
-          </div>
+      <div class="card p-4 flex items-center justify-between">
+        <div>
+          <span class="block text-sm text-muted font-semibold uppercase mb-1">Total Patients</span>
+          <div class="text-3xl font-bold text-slate-900 dark:text-white">{{ totalPatients }}</div>
+        </div>
+        <div class="bg-cyan-100 text-cyan-600 rounded-full p-2">
+          <i class="pi pi-users text-xl"></i>
         </div>
       </div>
 
-      <!-- Admitted Patients -->
-      <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card h-full flex flex-col justify-between p-4">
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="block text-muted text-sm mb-1 uppercase font-semibold tracking-wide">Admitted Patients</span>
-              <div class="text-4xl font-bold text-surface-900 dark:text-white">340</div>
-            </div>
-            <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 3rem; height: 3rem">
-              <i class="pi pi-user-plus text-purple-500 text-2xl"></i>
-            </div>
-          </div>
+      <!-- Total Doctors -->
+      <div class="card p-4 flex items-center justify-between">
+        <div>
+          <span class="block text-sm text-muted font-semibold uppercase mb-1">Total Doctors</span>
+          <div class="text-3xl font-bold text-slate-900 dark:text-white">{{ totalDoctors }}</div>
+        </div>
+        <div class="bg-green-100 text-green-600 rounded-full p-2">
+          <i class="pi pi-user-plus text-xl"></i>
         </div>
       </div>
 
+      <!-- Total Nurses -->
+      <div class="card p-4 flex items-center justify-between">
+        <div>
+          <span class="block text-sm text-muted font-semibold uppercase mb-1">Total Nurses</span>
+          <div class="text-3xl font-bold text-slate-900 dark:text-white">{{ totalNurses }}</div>
+        </div>
+        <div class="bg-pink-100 text-pink-600 rounded-full p-2">
+          <i class="pi pi-heart text-xl"></i>
+        </div>
+      </div>
+
+      <!-- Available Beds -->
+      <div class="card p-4 flex items-center justify-between">
+        <div>
+          <span class="block text-sm text-muted font-semibold uppercase mb-1">Available Beds</span>
+          <div class="text-3xl font-bold text-slate-900 dark:text-white">{{ totalAvailableBeds }}</div>
+        </div>
+        <div class="bg-purple-100 text-purple-600 rounded-full p-2">
+          <i class="pi pi-bed text-xl"></i>
+        </div>
+      </div>
     </div>
   `
 })
-export class StatsWidget {}
+export class StatsWidget implements OnInit {
+  totalPatients = 0;
+  totalDoctors = 0;
+  totalNurses = 0;
+  totalAvailableBeds = 0;
+
+  constructor(
+    private predictionService: PredictionService,
+    private doctorService: DoctorSupabaseService,
+    private nurseService: NurseSupabaseService,
+    private roomService: RoomSupabaseService
+  ) {}
+
+  async ngOnInit() {
+    this.totalPatients = await this.predictionService.getPredictionCount();
+    this.totalDoctors = (await this.doctorService.getDoctors()).length;
+
+    const nurses = await this.nurseService.getNurses();
+    this.totalNurses = nurses.data?.length || 0;
+
+    const rooms = await this.roomService.getRooms();
+    this.totalAvailableBeds = rooms?.reduce(
+      (acc, room) => acc + ((room.capacity ?? 0) - (room.occupied_beds ?? 0)),
+      0
+    ) || 0;
+  }
+}

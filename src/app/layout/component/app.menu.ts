@@ -28,9 +28,10 @@ export class AppMenu {
                 label: 'Hospital Management',
                 items: [
                     { label: 'Patients', icon: 'pi pi-fw pi-users', routerLink: ['/patients'] },
-                    { label: 'Nurses', icon: 'pi pi-fw pi-users', routerLink: ['/nurses'] },
+                     { label: 'Nurses', icon: 'pi pi-fw pi-users', routerLink: ['/nurses'] },
                     { label: 'Doctors', icon: 'pi pi-fw pi-user-plus', routerLink: ['/doctors'] },
                     { label: 'Rooms', icon: 'pi pi-fw pi-building', routerLink: ['/rooms'] },
+    
                   
                 ]
             }

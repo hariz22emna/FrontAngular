@@ -1,0 +1,202 @@
+<div class="card">
+  <!-- Header avec bouton Ajouter -->
+  <div class="flex justify-between items-center mb-4">
+    <div class="font-semibold text-xl">Liste des Prédictions</div>
+    <button
+      pButton
+      label="Ajouter une prédiction"
+      icon="pi pi-plus"
+      class="p-button-rounded p-button-success p-button-sm"
+      (click)="openNewPredictionDialog()"
+    ></button>
+  </div>
+
+  <!-- Tableau -->
+  <p-table
+    [value]="predictions"
+    [paginator]="true"
+    [rows]="10"
+    [rowHover]="true"
+    [showGridlines]="true"
+    [loading]="loading"
+    dataKey="id"
+    responsiveLayout="scroll"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>ID</th>
+        <th>Urgence</th>
+        <th>Prédite (min)</th>
+        <th>Réelle (min)</th>
+        <th>Heure</th>
+        <th>Actions</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-p>
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.urgency_level }}</td>
+        <td>{{ p.predicted_wait_time }}</td>
+        <td>{{ p.real_wait_time }}</td>
+        <td>{{ p.time_of_day }}h</td>
+        <td class="flex gap-2 justify-center">
+          <button
+            pButton
+            icon="pi pi-pencil"
+            class="p-button-rounded p-button-warning p-button-sm"
+            (click)="editPrediction(p)"
+            title="Modifier"
+          ></button>
+          <button
+            pButton
+            icon="pi pi-trash"
+            class="p-button-rounded p-button-danger p-button-sm"
+            (click)="deletePrediction(p.id)"
+            title="Supprimer"
+          ></button>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr><td colspan="6">Aucune prédiction trouvée.</td></tr>
+    </ng-template>
+  </p-table>
+
+  <!-- Modale d'ajout -->
+  <p-dialog
+    [(visible)]="predictionDialogVisible"
+    header="Ajouter une prédiction"
+    [modal]="true"
+    [style]="{ width: '700px' }"
+    [contentStyle]="{ 'max-height': '70vh', 'overflow-y': 'auto' }"
+    [breakpoints]="{ '768px': '95vw' }"
+    [draggable]="false"
+  >
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 py-2 px-1">
+      <!-- ✅ Champs numériques avec liaison dynamique -->
+      <div *ngFor="let field of fields">
+        <label class="font-bold block mb-1" [ngClass]="{ 'text-red-600': field.required }">
+          {{ field.label }} <span *ngIf="field.required">*</span>
+        </label>
+        <input
+          type="number"
+          pInputText
+          [ngModel]="getFieldValue(field.model)"
+          (ngModelChange)="setFieldValue(field.model, $event)"
+          [name]="field.model"
+          class="w-full"
+          [placeholder]="field.required ? 'Obligatoire' : 'Optionnel'"
+        />
+      </div>
+
+      <!-- Dropdowns -->
+      <div>
+        <label class="font-bold block mb-1 text-red-600">Jour *</label>
+        <p-dropdown
+          [options]="days"
+          [(ngModel)]="selectedDay"
+          placeholder="Sélectionner un jour"
+          class="w-full"
+          appendTo="body"
+        ></p-dropdown>
+      </div>
+
+      <div>
+        <label class="font-bold block mb-1 text-red-600">Saison *</label>
+        <p-dropdown
+          [options]="seasons"
+          [(ngModel)]="selectedSeason"
+          placeholder="Sélectionner une saison"
+          class="w-full"
+          appendTo="body"
+        ></p-dropdown>
+      </div>
+
+      <div>
+        <label class="font-bold block mb-1 text-red-600">Région *</label>
+        <p-dropdown
+          [options]="regions"
+          [(ngModel)]="selectedRegion"
+          placeholder="Sélectionner la région"
+          class="w-full"
+          appendTo="body"
+        ></p-dropdown>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <ng-template pTemplate="footer">
+      <p-button 
+        label="Annuler" 
+        icon="pi pi-times" 
+        text 
+        (click)="predictionDialogVisible = false"
+      ></p-button>
+      <p-button 
+        label="Ajouter" 
+        icon="pi pi-check" 
+        class="p-button-success" 
+        (click)="savePrediction()"
+      ></p-button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- ✅ Modale de modification corrigée -->
+  <p-dialog
+    header="Modifier la prédiction"
+    [(visible)]="editDialogVisible"
+    [modal]="true"
+    [style]="{ width: '400px' }"
+  >
+    <div class="flex flex-col gap-3">
+      <div>
+        <label class="font-bold block mb-1">Temps d'attente prédit (min)</label>
+        <input
+          type="number"
+          pInputText
+          [ngModel]="getEditFieldValue('predicted_wait_time')"
+          (ngModelChange)="setEditFieldValue('predicted_wait_time', $event)"
+          class="w-full"
+        />
+      </div>
+      
+      <div>
+        <label class="font-bold block mb-1">Temps d'attente réel (min)</label>
+        <input
+          type="number"
+          pInputText
+          [ngModel]="getEditFieldValue('real_wait_time')"
+          (ngModelChange)="setEditFieldValue('real_wait_time', $event)"
+          class="w-full"
+        />
+      </div>
+      
+      <div>
+        <label class="font-bold block mb-1">Niveau d'urgence</label>
+        <input
+          type="number"
+          pInputText
+          [ngModel]="getEditFieldValue('urgency_level')"
+          (ngModelChange)="setEditFieldValue('urgency_level', $event)"
+          class="w-full"
+        />
+      </div>
+    </div>
+    
+    <ng-template pTemplate="footer">
+      <p-button 
+        label="Annuler" 
+        icon="pi pi-times" 
+        text 
+        (click)="editDialogVisible = false"
+      ></p-button>
+      <p-button 
+        label="Enregistrer" 
+        icon="pi pi-check" 
+        (click)="saveEditedPrediction()"
+      ></p-button>
+    </ng-template>
+  </p-dialog>
+</div>
