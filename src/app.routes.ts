@@ -1,21 +1,20 @@
-  import { Routes } from '@angular/router';
-  import { AppLayout } from './app/layout/component/app.layout';
-  import { Dashboard } from './app/pages/dashboard/dashboard';
-  import { Documentation } from './app/pages/documentation/documentation';
-  import { Landing } from './app/pages/landing/landing';
-  import { Notfound } from './app/pages/notfound/notfound';
+import { Routes } from '@angular/router';
+import { AppLayout } from './app/layout/component/app.layout';
+import { DashboardComponent } from './app/pages/dashboard/dashboard';
+import { Documentation } from './app/pages/documentation/documentation';
+import { Landing } from './app/pages/landing/landing';
+import { Notfound } from './app/pages/notfound/notfound';
 
-  export const appRoutes: Routes = [
-    {
-      path: '',
-      component: AppLayout,
-      children: [
-        { path: '', component: Dashboard }, // ✅ tableau de bord par défaut
-        { path: 'uikit', loadChildren: () => import('./app/pages/uikit/uikit.routes') },
-        { path: 'documentation', component: Documentation },
-        { path: 'patients', loadChildren: () => import('./app/pages/prediction/prediction.routes') },
-        { path: 'rooms', loadChildren: () => import('./app/pages/room/rooms/rooms.routes') },
-
+export const appRoutes: Routes = [
+  {
+    path: '',
+    component: AppLayout,
+    children: [
+      { path: '', component: DashboardComponent }, // ✅ tableau de bord par défaut
+      { path: 'uikit', loadChildren: () => import('./app/pages/uikit/uikit.routes') },
+      { path: 'documentation', component: Documentation },
+      { path: 'patients', loadChildren: () => import('./app/pages/prediction/prediction.routes') },
+      { path: 'rooms', loadChildren: () => import('./app/pages/room/rooms/rooms.routes') },
 
         { 
           path: 'doctors', 

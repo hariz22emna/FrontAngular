@@ -3,49 +3,41 @@ import { Subject, Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class AlertService {
-  private socket: WebSocket;
   private alertSubject = new Subject<string>();
-  
-private surchargeSubject = new Subject<{ time: string, value: number }>();
-
-getSurchargeData(): Observable<{ time: string, value: number }> {
-  return this.surchargeSubject.asObservable();
-}
-
+  private socket: WebSocket | null = null;
+  private reconnectDelay = 3000; // délai de reconnexion en ms (3 secondes)
 
   constructor() {
-    this.socket = new WebSocket('ws://localhost:8001/ws/alerts');
-    
-    this.socket.onopen = () => {
-      console.log('✅ WebSocket connecté');
-    };
-
-  this.socket.onmessage = (event) => {
-  console.log('📨 Message reçu :', event.data);
-  this.alertSubject.next(event.data);
-
-  if (event.data.startsWith('SURCHARGE_EVENT:')) {
-    const value = parseInt(event.data.split(':')[1], 10);
-    this.surchargeSubject.next({ time: new Date().toLocaleTimeString(), value });
+    this.connectWebSocket();
   }
-};
 
+  private connectWebSocket() {
+    const wsUrl = 'ws://localhost:8000/ws/alerts';
+    console.log(`🔌 Connexion WebSocket à : ${wsUrl}`);
+    
+    this.socket = new WebSocket(wsUrl);
 
-
-    this.socket.onerror = (err) => {
-      console.error('❌ Erreur WebSocket', err);
+    this.socket.onopen = () => {
+      console.log('✅ WebSocket connecté avec succès.');
     };
 
-    this.socket.onclose = () => {
-      console.warn('❌ WebSocket fermé');
+    this.socket.onmessage = (event) => {
+      console.log('📨 Message reçu depuis WebSocket :', event.data);
+      this.alertSubject.next(event.data);
+    };
+
+    this.socket.onerror = (error) => {
+      console.error('❌ Erreur WebSocket :', error);
+    };
+
+    this.socket.onclose = (event) => {
+      console.warn('⚠️ WebSocket fermé. Code:', event.code, 'Raison:', event.reason);
+      // Tente de se reconnecter après un délai
+      setTimeout(() => this.connectWebSocket(), this.reconnectDelay);
     };
   }
 
   getAlerts(): Observable<string> {
     return this.alertSubject.asObservable();
-  }
-
-  notify(message: string) {
-    this.alertSubject.next(message); // aussi utilisable côté frontend
   }
 }

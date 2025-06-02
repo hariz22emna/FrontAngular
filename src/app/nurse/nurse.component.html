@@ -1,3 +1,6 @@
+<p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
+
 <div class="card">
   <div class="flex justify-between items-center mb-4">
     <div class="font-semibold text-xl">Liste des Infirmiers</div>
@@ -70,7 +73,7 @@
               icon="pi pi-trash"
               class="p-button-rounded p-button-danger p-button-sm"
               title="Supprimer"
-              (click)="deleteNurse(nurse.id)"
+              (click)="confirmDeleteNurse(nurse)"
             ></button>
           </div>
         </td>
@@ -84,7 +87,7 @@
     </ng-template>
   </p-table>
 
-  <!-- Modal ajout -->
+  <!-- Dialog Ajout -->
   <p-dialog [(visible)]="nurseDialog" [style]="{ width: '500px' }" header="Ajouter un infirmier" [modal]="true">
     <div class="flex flex-col gap-4">
       <div>
@@ -111,7 +114,7 @@
     </ng-template>
   </p-dialog>
 
-  <!-- Modal édition -->
+  <!-- Dialog Édition -->
   <p-dialog [(visible)]="editDialogVisible" [style]="{ width: '500px' }" header="Modifier l'infirmier" [modal]="true">
     <div class="flex flex-col gap-4">
       <div>
