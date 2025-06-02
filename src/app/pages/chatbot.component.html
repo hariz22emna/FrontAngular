@@ -1,0 +1,15 @@
+<div class="card p-4">
+    <h2 class="text-lg font-bold mb-2">🤖 Assistant IA</h2>
+  
+    <textarea [(ngModel)]="prompt" placeholder="Posez votre question..." rows="4" class="w-full p-2 border rounded mb-3"></textarea>
+  
+    <button (click)="sendPrompt()" [disabled]="loading" class="bg-blue-600 text-white px-4 py-2 rounded">
+      {{ loading ? 'Chargement...' : 'Envoyer' }}
+    </button>
+  
+    <div *ngIf="response" class="mt-4 bg-gray-100 p-3 rounded shadow-sm">
+      <strong>Réponse :</strong>
+      <p>{{ response }}</p>
+    </div>
+  </div>
+  

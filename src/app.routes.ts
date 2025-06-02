@@ -16,24 +16,27 @@ export const appRoutes: Routes = [
       { path: 'patients', loadChildren: () => import('./app/pages/prediction/prediction.routes') },
       { path: 'rooms', loadChildren: () => import('./app/pages/room/rooms/rooms.routes') },
 
+        { 
+          path: 'doctors', 
+          loadComponent: () => import('./app/doctor/doctor.component').then(m => m.DoctorListComponent) 
+        },
+        {
+          path: 'nurses',
+          loadComponent: () => import('./app/nurse/nurse.component').then(m => m.NursesComponent)
+        },
+        {
+          path: 'chatbot',
+          loadComponent: () => import('./app/pages/chatbot.component').then(m => m.ChatbotComponent)
+        },
+        
+        
+        { path: 'pages', loadChildren: () => import('./app/pages/pages.routes') }
+      ]
+    },
+    { path: 'landing', component: Landing },
+    { path: 'notfound', component: Notfound },
+    { path: 'auth', loadChildren: () => import('./app/pages/auth/auth.routes') },
 
-      { 
-        path: 'doctors', 
-        loadComponent: () => import('./app/doctor/doctor.component').then(m => m.DoctorListComponent) 
-      },
-      {
-        path: 'nurses',
-        loadComponent: () => import('./app/nurse/nurse.component').then(m => m.NursesComponent)
-      },
-      
-      
-      { path: 'pages', loadChildren: () => import('./app/pages/pages.routes') }
-    ]
-  },
-  { path: 'landing', component: Landing },
-  { path: 'notfound', component: Notfound },
-  { path: 'auth', loadChildren: () => import('./app/pages/auth/auth.routes') },
-
-  // ✅ Redirection des pages inconnues
-  { path: '**', redirectTo: '/notfound' }
-];
+    // ✅ Redirection des pages inconnues
+    { path: '**', redirectTo: '/notfound' }
+  ];
